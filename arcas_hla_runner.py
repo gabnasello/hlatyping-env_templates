@@ -83,26 +83,26 @@ class ArcasHLARunner:
         command = f"{self.arcas_hla_path} genotype {extracted_fq} -o {output_dir} -g {genes} -t {threads} {verbose_flag} {single_flag}"
         self.run_command(command)
 
-    def partial_genotype(self, extracted_fq, genes, genotype_file, output_dir, threads=8, verbose=True, single=True):
+    def partial_genotype(self, extracted_fq, genotype_file, output_dir, genes, threads=8, verbose=True, single=True):
         """
         Run the 'partial' command of arcasHLA.
-
+    
         Parameters:
         - extracted_fq (str): Path to the extracted FASTQ file.
-        - genes (str): Comma-separated list of genes to include.
         - genotype_file (str): Path to the genotype JSON file.
         - output_dir (str): Directory to save the partial genotyping results.
+        - genes (str): Comma-separated list of genes to include.
         - threads (int): Number of threads to use.
         - verbose (bool): Whether to enable verbose output.
         - single (bool): Whether to enable single-end mode.
-
+    
         Returns:
         - None
         """
         verbose_flag = "-v" if verbose else ""
         single_flag = "--single" if single else ""
-        command = (f"{self.arcas_hla_path} partial {extracted_fq} -g {genes} -G {genotype_file} "
-                   f"-o {output_dir} -t {threads} {verbose_flag} {single_flag}")
+        command = (f"{self.arcas_hla_path} partial {extracted_fq} -G {genotype_file} -o {output_dir} "
+                   f"-g {genes} -t {threads} {verbose_flag} {single_flag}")
         self.run_command(command)
 
     def update_reference(self):
