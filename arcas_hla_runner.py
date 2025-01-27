@@ -30,19 +30,21 @@ class ArcasHLARunner:
     def run_command(self, command):
         """
         Run a terminal command within the specified Conda environment and print its output live.
-
+    
         Parameters:
         - command (str): The command to execute.
-
+    
         Returns:
         - None
         """
         full_command = f"conda run -n {self.conda_env} {command}"
+        print(f"Executing command: {full_command}")  # Print the command before execution
         process = subprocess.Popen(full_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for line in iter(process.stdout.readline, b""):
             print(line.decode('utf-8'), end="")
         process.stdout.close()
         process.wait()
+
 
     def extract_reads(self, bam_file, output_dir, threads=8, verbose=True, single=False):
         """
@@ -63,25 +65,70 @@ class ArcasHLARunner:
         command = f"{self.arcas_hla_path} extract {bam_file} -o {output_dir} -t {threads} {verbose_flag} {single_flag}"
         self.run_command(command)
 
-    def genotype(self, extracted_fq, output_dir, genes, threads=8, verbose=True, single=False):
+    def genotype(
+        self,
+        extracted_fq,
+        output_dir,
+        genes,
+        population="prior",
+        min_count=75,
+        tolerance=1e-7,
+        max_iterations=1000,
+        drop_iterations=None,
+        drop_threshold=0.1,
+        zygosity_threshold=0.15,
+        log_file=None,
+        temp_dir="/tmp",
+        keep_files=False,
+        threads=1,
+        verbose=False,
+        single=False,
+        avg_fragment_length=200,
+        std_fragment_length=20
+    ):
         """
         Run the 'genotype' command of arcasHLA.
-
+    
         Parameters:
         - extracted_fq (str): Path to the extracted FASTQ file.
         - output_dir (str): Directory to save the genotyping results.
         - genes (str): Comma-separated list of genes to include.
+        - population (str): Sample population (e.g., "asian_pacific_islander", "black", "caucasian", etc.).
+        - min_count (int): Minimum gene read count required for genotyping.
+        - tolerance (float): Convergence tolerance for transcript quantification.
+        - max_iterations (int): Maximum number of iterations for transcript quantification.
+        - drop_iterations (int): Number of iterations before dropping low support alleles.
+        - drop_threshold (float): Proportion of maximum abundance an allele needs to not be dropped.
+        - zygosity_threshold (float): Threshold for determining zygosity.
+        - log_file (str): Path to log file for run summary.
+        - temp_dir (str): Temporary directory to use.
+        - keep_files (bool): Whether to keep intermediate files.
         - threads (int): Number of threads to use.
         - verbose (bool): Whether to enable verbose output.
         - single (bool): Whether to enable single-end mode.
-
+        - avg_fragment_length (int): Estimated average fragment length for single-end reads.
+        - std_fragment_length (int): Estimated standard deviation of fragment length.
+    
         Returns:
         - None
         """
         verbose_flag = "-v" if verbose else ""
         single_flag = "--single" if single else ""
-        command = f"{self.arcas_hla_path} genotype {extracted_fq} -o {output_dir} -g {genes} -t {threads} {verbose_flag} {single_flag}"
+        keep_files_flag = "--keep_files" if keep_files else ""
+        drop_iterations_flag = f"--drop_iterations {drop_iterations}" if drop_iterations is not None else ""
+        log_flag = f"--log {log_file}" if log_file else ""
+    
+        command = (
+            f"{self.arcas_hla_path} genotype {extracted_fq} "
+            f"-o {output_dir} -g {genes} -p {population} --min_count {min_count} "
+            f"--tolerance {tolerance} --max_iterations {max_iterations} {drop_iterations_flag} "
+            f"--drop_threshold {drop_threshold} --zygosity_threshold {zygosity_threshold} "
+            f"{log_flag} --temp {temp_dir} {keep_files_flag} -t {threads} {verbose_flag} {single_flag} "
+            f"-l {avg_fragment_length} -s {std_fragment_length}"
+        )
+    
         self.run_command(command)
+
 
     def partial_genotype(self, extracted_fq, genotype_file, output_dir, genes, threads=8, verbose=True, single=True):
         """
@@ -103,7 +150,9 @@ class ArcasHLARunner:
         single_flag = "--single" if single else ""
         command = (f"{self.arcas_hla_path} partial {extracted_fq} -G {genotype_file} -o {output_dir} "
                    f"-g {genes} -t {threads} {verbose_flag} {single_flag}")
-        self.run_command(command)
+        
+        self.run_command(command)        
+
 
     def update_reference(self):
         """
